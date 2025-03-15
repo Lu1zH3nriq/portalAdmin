@@ -1,0 +1,167 @@
+body {
+  background-color: #0d0259;
+  font-family: "Arial", sans-serif;
+}
+
+.app-container {
+  background-color: #0d0259;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.logo {
+  height: 50px;
+}
+
+.restaurant-name {
+  font-family: "Arial", sans-serif;
+  font-size: 2rem;
+  color: #f2f2f2;
+}
+
+.section-title {
+  font-family: "Arial", sans-serif;
+  font-size: 1.5rem;
+  color: #f2f2f2;
+}
+
+.custom-row {
+  background-color: #f2f2f2;
+  padding: 20px;
+  margin: 10px;
+  border-radius: 10px;
+  width: 100%;
+}
+
+.custom-col {
+  border: 2px solid #110273;
+  background-color: #f2f2f2;
+  color: #110273;
+  padding: 20px;
+  margin: 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.custom-col:hover {
+  transform: scale(1.05);
+  background-color: #f205b3;
+  color: white;
+}
+
+.selected {
+  background-color: #f205b3;
+  color: white;
+}
+
+.form-container {
+  background-color: #f2f2f2;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-label {
+  font-weight: bold;
+  color: #110273;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #110273;
+  border-radius: 5px;
+}
+
+.form-button {
+  background-color: #f205b3;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.form-button:hover {
+  background-color: #ef1bf2;
+}
+
+.app-container-view {
+  background-color: #f2f2f2;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+.praca-col {
+  background-color: #e0e0e0;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.praca-title {
+  font-family: "Arial", sans-serif;
+  font-size: 1.8rem;
+  color: #110273;
+  margin-bottom: 20px;
+}
+
+.mesas-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mesa {
+  background-color: #28a745; /* Verde para mesas sem reserva */
+  color: white;
+  border-radius: 5px;
+  text-align: center;
+  width: 160px; /* Aumentar a largura */
+  height: 160px; /* Aumentar a altura */
+  display: flex;
+  flex-direction: column; /* Alinhar os itens verticalmente */
+  align-items: center;
+  justify-content: center;
+}
+
+.mesa-reservada {
+  background-color: #ff9800; /* Laranja para mesas com reserva */
+  color: white;
+  border-radius: 5px;
+  text-align: center;
+  width: 160px; /* Aumentar a largura */
+  height: 160px; /* Aumentar a altura */
+  display: flex;
+  flex-direction: column; /* Alinhar os itens verticalmente */
+  align-items: center;
+  justify-content: center;
+}
+
+.mesa-ocupada {
+  background-color: #dc3545; /* Vermelho para mesas ocupadas */
+  color: white;
+  border-radius: 5px;
+  text-align: center;
+  width: 160px; /* Aumentar a largura */
+  height: 160px; /* Aumentar a altura */
+  display: flex;
+  flex-direction: column; /* Alinhar os itens verticalmente */
+  align-items: center;
+  justify-content: center;
+}
+
+.reserva-info {
+  margin-top: 10px;
+  font-size: 0.8rem; /* Diminuir o tamanho da fonte para as informações de reserva */
+}
