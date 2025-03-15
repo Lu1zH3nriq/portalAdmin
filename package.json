@@ -28,6 +28,7 @@
     "reactstrap": "^9.2.3"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "pm2": "^6.0.5"
   }
 }
