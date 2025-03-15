@@ -20,11 +20,11 @@ const database = client.database(process.env.COSMOS_DB_DATABASE);
 const container = database.container(process.env.COSMOS_DB_CONTAINER);
 
 // Servir os arquivos estáticos do React
-app.use(express.static(path.join(__dirname, "..", "client", "build")));
+app.use(express.static(path.join(__dirname, "..", "webapp", "build")));
 
 // Rota principal que retorna o index.html do React
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "client", "build", "index.html"));
+  res.sendFile(path.join(__dirname, "..", "webapp", "build", "index.html"));
 });
 
 // Rota para buscar todos os documentos do container
