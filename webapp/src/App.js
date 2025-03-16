@@ -46,7 +46,7 @@ function App() {
     mesa: null
   });
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3001";
+  const API_URL = process.env.REACT_APP_API_URL || "https://ois-portaladmin.azurewebsites.net";
 
   async function fetchItems() {
     try {
