@@ -52,7 +52,12 @@ function App() {
     mesa: null
   });
 
-  const API_URL = process.env.REACT_APP_API_URL || "https://ois-portaladmin.azurewebsites.net";
+  const [reservasDaMesaModal, setReservasDaMesaModal] = useState({
+    state: false,
+    mesa: null
+  });
+
+  const API_URL = "http://localhost:3001";
 
   async function fetchItems() {
     try {
@@ -82,22 +87,34 @@ function App() {
     setLoading(true);
     e.preventDefault();
 
-    // Converte a data e a hora para o formato ISO
-    const dataReservaISO = formData.dataReserva ? new Date(formData.dataReserva).toISOString().split('T')[0] : '';
-    const horarioReservaISO = formData.horarioReserva ? `${formData.dataReserva}T${formData.horarioReserva}:00.000Z` : '';
-
-    const dataToSend = {
+    let dataToSend = {
       numero: formData.numero,
       lugares: formData.lugares,
-      reserva: formData.reserva,
-      nomeCliente: formData.nomeCliente,
-      telefoneCliente: formData.telefoneCliente,
-      dataReserva: dataReservaISO,
-      horarioReserva: horarioReservaISO,
       praca: formData.praca,
       status: 'Disponivel'
     };
 
+    if (formData.reserva) {
+      dataToSend = {
+        ...dataToSend,
+        reservas: [
+          {
+            nomeCliente: formData.nomeCliente,
+            telefoneCliente: formData.telefoneCliente,
+            dataReserva: formData.dataReserva,
+            horarioReserva: formData.horarioReserva
+          }
+        ]
+      }
+    }
+    else {
+      dataToSend = {
+        ...dataToSend,
+        reservas: []
+      }
+    }
+
+    console.log(dataToSend);
     axios.post(`${API_URL}/api/criarMesa`, dataToSend)
       .then(response => {
         setConfirmModal({
@@ -136,25 +153,51 @@ function App() {
   };
 
   const renderMesas = (praca) => {
+    // Obtém a data atual no formato ISO (apenas a parte da data)
+    const dataAtual = new Date().toISOString().split('T')[0];
+
     return items
       .filter(item => item.praca === praca)
-      .map(item => (
-        <div
-          key={item.id}
-          className={`mesa${item.reserva ? '-reservada' : item.status === 'Ocupada' ? '-ocupada' : ''}`}
-          onClick={() => handleMesaClick(item)}
-          style={{ cursor: 'pointer' }}
-          title="Clique para ver detalhes"
-        >
-          <p>Mesa: {item.numero}</p>
-          <p>{item.lugares} lugares</p>
-          {item.reserva && (
-            <>
-              <p>Reservada para: {item.nomeCliente}</p>
-            </>
-          )}
-        </div>
-      ));
+      .map(item => {
+        // Filtra as reservas que correspondem à data atual
+        const reservasHoje = item.reservas?.filter(reserva => reserva.dataReserva === dataAtual) || [];
+
+        return (
+          <div
+            key={item.id}
+            className={`mesa${reservasHoje.length > 0 ? '-reservada' : item.status === 'Ocupada' ? '-ocupada' : ''}`}
+            onClick={() => handleMesaClick(item)}
+            style={{ cursor: 'pointer' }}
+            title="Clique para ver detalhes"
+          >
+            <p>Mesa: {item.numero}</p>
+            <p>{item.lugares} lugares</p>
+            {reservasHoje.length > 0 ? (
+              reservasHoje.map((reserva, index) => (
+                <div key={index}>
+                  <p>Reservada às {new Date(reserva.horarioReserva).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'UTC'
+                  })}</p>
+                </div>
+              ))
+            ) : (
+              item.status === 'Ocupada' ? (
+                <p>Ocupada</p>
+              ) : (
+                <p>Disponível</p>
+              )
+            )}
+          </div>
+        );
+      });
+  };
+
+  const formatarTelefone = (telefone) => {
+    if (!telefone) return '';
+    const match = telefone.match(/^(\d{2})(\d{5})(\d{4})$/);
+    return match ? `(${match[1]}) ${match[2]}-${match[3]}` : telefone;
   };
 
   return (
@@ -384,9 +427,7 @@ function App() {
       </Modal>
 
       {/* MODAL PARA VER DETALHES DA MESA */}
-      <Modal isOpen={detailsModal} toggle={() => setDetailsModal(false)} centered style={{
-        width: '90%'
-      }}>
+      <Modal isOpen={detailsModal} toggle={() => setDetailsModal(false)} centered style={{ width: '90%' }}>
         <ModalHeader toggle={() => setDetailsModal(false)}>Detalhes da Mesa</ModalHeader>
         <ModalBody className="text-start">
           {selectedMesa && (
@@ -394,93 +435,54 @@ function App() {
               <p><strong>Número:</strong> {selectedMesa.numero}</p>
               <p><strong>Lugares:</strong> {selectedMesa.lugares}</p>
               <p><strong>Praça:</strong> {selectedMesa.praca}</p>
-              {selectedMesa.reserva && (
+
+              {/* Verifica se há reservas para a data atual */}
+              {selectedMesa.reservas?.some(reserva => reserva.dataReserva === new Date().toISOString().split('T')[0]) ? (
                 <>
-                  <p><strong>Reservada para:</strong> {selectedMesa.nomeCliente}</p>
-                  <p><strong>Telefone:</strong> {selectedMesa.telefoneCliente}</p>
-                  <p><strong>Data:</strong> {new Date(selectedMesa.dataReserva).toLocaleDateString()}</p>
-                  <p><strong>Horário:</strong> {new Date(selectedMesa.horarioReserva).toLocaleTimeString()}</p>
+                  {selectedMesa.reservas
+                    .filter(reserva => reserva.dataReserva === new Date().toISOString().split('T')[0])
+                    .map((reserva, index) => {
+                      // Usa dataReserva diretamente
+                      const dataFormatada = reserva.dataReserva.split('-').reverse().join('/'); // Converte para DD/MM/YYYY
+
+                      // Formata o horário
+                      const horaFormatada = new Date(reserva.horarioReserva).toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'UTC' // Garante que o horário seja tratado como UTC
+                      });
+
+                      return (
+                        <div key={index}>
+                          <p><strong>Reservada para:</strong> {reserva.nomeCliente}</p>
+                          <p><strong>Telefone:</strong> {formatarTelefone(reserva.telefoneCliente)}</p>
+                          <p><strong>Data:</strong> {dataFormatada}</p>
+                          <p><strong>Horário:</strong> {horaFormatada}</p>
+                        </div>
+                      );
+                    })}
                 </>
+              ) : (
+                <p><strong>Status:</strong> {selectedMesa.status}</p>
               )}
             </>
           )}
         </ModalBody>
         <ModalFooter>
-          {!selectedMesa?.reserva && selectedMesa?.status !== "Ocupada" ? (
+          {/* Se a mesa estiver reservada */}
+          {selectedMesa?.reservas?.some(reserva => reserva.dataReserva === new Date().toISOString().split('T')[0]) ? (
             <>
               <Button
-                style={{
-                  backgroundColor: "#F205B3"
-                }}
+                color="success"
                 onClick={() => {
-                  setReservarModal({
-                    state: true,
-                    mesa: selectedMesa
-                  });
-                }}
-              >
-                <FaUserClock /> Reservar
-              </Button>
+                  setLoadingOptions({ ...loadingOptions, confirmar: true });
 
-              <Button color="primary"
-                onClick={() => {
-                  setEditarModal({
-                    state: true,
-                    mesa: selectedMesa
-                  });
-                }}>
-                <FaEdit /> Editar
-              </Button>
-            </>
-          ) : (null)
-          }
-
-          {!selectedMesa?.reserva ? (
-            <Button color="danger"
-              onClick={() => {
-                setLoadingOptions({
-                  ...loadingOptions,
-                  delete: true
-                });
-
-                axios.delete(`${API_URL}/api/deleteMesa/${selectedMesa.numero}`)
-                  .then(response => {
-                    setConfirmModal({
-                      state: true,
-                      message: response.data.message,
-                      type: 'success'
-                    });
-                    fetchItems();
+                  axios.put(`${API_URL}/api/confirmarReserva/${selectedMesa.id}`, {
+                    reservas: selectedMesa.reservas.filter(
+                      reserva => reserva.dataReserva !== new Date().toISOString().split('T')[0]
+                    ),
+                    status: "Ocupada"
                   })
-                  .catch(error => {
-                    setConfirmModal({
-                      state: true,
-                      message: error.response.data.error,
-                      type: 'error'
-                    });
-                  })
-                  .finally(() => {
-                    setLoadingOptions({
-                      ...loadingOptions,
-                      delete: false
-                    });
-                    setDetailsModal(false);
-                  });
-
-              }}>
-              <FaTrash /> {loadingOptions.delete ? <Spinner size="sm" color="light" /> : 'Excluir'}
-            </Button>) :
-            (
-
-              <Button
-                color="danger"
-                onClick={() => {
-                  setLoadingOptions({
-                    ...loadingOptions,
-                    cancelar: true
-                  });
-
-                  axios.put(`${API_URL}/api/cancelarReserva/${selectedMesa.id}`)
                     .then(response => {
                       setConfirmModal({
                         state: true,
@@ -493,71 +495,145 @@ function App() {
                     .catch(error => {
                       setConfirmModal({
                         state: true,
-                        message: error.response.data.error,
+                        message: error.response?.data?.error || 'Erro ao confirmar a reserva',
                         type: 'error'
                       });
-                      setDetailsModal(false);
                     })
                     .finally(() => {
-                      setLoadingOptions({
-                        ...loadingOptions,
-                        cancelar: false
-                      });
+                      setLoadingOptions({ ...loadingOptions, confirmar: false });
                     });
-                }}>
+                }}
+              >
+                <FaEdit /> {loadingOptions.confirmar ? <Spinner size="sm" color="light" /> : 'Confirmar Reserva'}
+              </Button>
+
+              <Button
+                color="danger"
+                onClick={() => {
+                  setLoadingOptions({ ...loadingOptions, cancelar: true });
+
+                  axios.put(`${API_URL}/api/cancelarReserva`, {
+                    id: selectedMesa.id
+                  })
+                    .then(response => {
+                      setConfirmModal({
+                        state: true,
+                        message: response.data.message,
+                        type: 'success'
+                      });
+                      fetchItems();
+                      setDetailsModal(false);
+                    })
+                    .catch(error => {
+                      setConfirmModal({
+                        state: true,
+                        message: error.response?.data?.error || 'Erro ao cancelar a reserva',
+                        type: 'error'
+                      });
+                    })
+                    .finally(() => {
+                      setLoadingOptions({ ...loadingOptions, cancelar: false });
+                    });
+                }}
+              >
                 <FaUserClock /> {loadingOptions.cancelar ? <Spinner size="sm" color="light" /> : 'Cancelar Reserva'}
               </Button>
-            )}
 
-          {selectedMesa?.status === "Disponivel" ? (
-            <Button style={{
-              backgroundColor: "#28a745"
-            }}
-              onClick={() => {
-                setLoadingOptions({
-                  ...loadingOptions,
-                  confirmar: true
-                });
-
-                axios.put(`${API_URL}/api/ocuparMesa/${selectedMesa.id}`)
-                  .then(response => {
-                    setConfirmModal({
-                      state: true,
-                      message: response.data.message,
-                      type: 'success'
-                    });
-                    fetchItems();
-                    setDetailsModal(false);
-                  })
-                  .catch(error => {
-                    setConfirmModal({
-                      state: true,
-                      message: error.response.data.error,
-                      type: 'error'
-                    });
-                    setDetailsModal(false);
-                  })
-                  .finally(() => {
-                    setLoadingOptions({
-                      ...loadingOptions,
-                      confirmar: false
-                    });
-                  });
-              }}>
-              <FaEdit /> {loadingOptions.confirmar ? <Spinner size="sm" color="light" /> : (
-                selectedMesa?.reserva ? 'Confirmar Reserva' : 'Ocupar Mesa'
-              )}
-            </Button>
-          ) : (
-            <>
-              <Button style={{
-                backgroundColor: "#28a745"
-              }}
+              <Button
+                style={{ backgroundColor: "#ef1bf2" }}
                 onClick={() => {
-                  setLoadingOptions({
-                    ...loadingOptions,
-                    confirmar: true
-                  });
+                  setModalMoverMesa({ state: true, mesa: selectedMesa });
+                }}
+              >
+                <FaUserClock /> {loadingOptions.mover ? <Spinner size="sm" color="light" /> : 'Mover Mesa'}
+              </Button>
+            </>
+          ) : selectedMesa?.status === "Disponivel" ? (
+            <>
+              <Button
+                style={{ backgroundColor: "#ef1bf2" }}
+                onClick={() => {
+                  setReservarModal({ state: true, mesa: selectedMesa });
+                }}
+              >
+                <FaEdit /> {loadingOptions.confirmar ? <Spinner size="sm" color="light" /> : 'Reservar Mesa'}
+              </Button>
+
+              <Button
+                color="primary"
+                onClick={() => {
+                  setEditarModal({ state: true, mesa: selectedMesa });
+                }}
+              >
+                <FaEdit /> Editar
+              </Button>
+
+              <Button
+                color="danger"
+                onClick={() => {
+                  setLoadingOptions({ ...loadingOptions, delete: true });
+
+                  axios.delete(`${API_URL}/api/deleteMesa/${selectedMesa.numero}`)
+                    .then(response => {
+                      setConfirmModal({
+                        state: true,
+                        message: response.data.message,
+                        type: 'success'
+                      });
+                      fetchItems();
+                      setDetailsModal(false);
+                    })
+                    .catch(error => {
+                      setConfirmModal({
+                        state: true,
+                        message: error.response?.data?.error || 'Erro ao excluir a mesa',
+                        type: 'error'
+                      });
+                    })
+                    .finally(() => {
+                      setLoadingOptions({ ...loadingOptions, delete: false });
+                    });
+                }}
+              >
+                <FaTrash /> {loadingOptions.delete ? <Spinner size="sm" color="light" /> : 'Excluir'}
+              </Button>
+
+              <Button
+                style={{ backgroundColor: "#28a745" }}
+                onClick={() => {
+                  setLoadingOptions({ ...loadingOptions, ocupar: true });
+
+                  axios.put(`${API_URL}/api/ocuparMesa/${selectedMesa.id}`)
+                    .then(response => {
+                      setConfirmModal({
+                        state: true,
+                        message: response.data.message,
+                        type: 'success'
+                      });
+                      fetchItems();
+                      setDetailsModal(false);
+                    })
+                    .catch(error => {
+                      setConfirmModal({
+                        state: true,
+                        message: error.response?.data?.error || 'Erro ao ocupar a mesa',
+                        type: 'error'
+                      });
+                    })
+                    .finally(() => {
+                      setLoadingOptions({ ...loadingOptions, ocupar: false });
+                    });
+                }}
+              >
+                <FaEdit /> {loadingOptions.ocupar ? <Spinner size="sm" color="light" /> : 'Ocupar Mesa'}
+              </Button>
+            </>
+          ) : selectedMesa?.status === "Ocupada" ? (
+            <>
+              <Button
+                style={{ backgroundColor: "#28a745" }}
+                onClick={() => {
+                  setLoadingOptions({ ...loadingOptions, confirmar: true });
 
                   axios.put(`${API_URL}/api/liberarMesa/${selectedMesa.id}`)
                     .then(response => {
@@ -572,35 +648,32 @@ function App() {
                     .catch(error => {
                       setConfirmModal({
                         state: true,
-                        message: error.response.data.error,
+                        message: error.response?.data?.error || 'Erro ao liberar a mesa',
                         type: 'error'
                       });
-                      setDetailsModal(false);
                     })
                     .finally(() => {
-                      setLoadingOptions({
-                        ...loadingOptions,
-                        confirmar: false
-                      });
+                      setLoadingOptions({ ...loadingOptions, confirmar: false });
                     });
-                }}>
+                }}
+              >
                 <FaEdit /> {loadingOptions.confirmar ? <Spinner size="sm" color="light" /> : 'Liberar Mesa'}
               </Button>
 
-              <Button color="danger"
+              <Button
+                color="danger"
                 onClick={() => {
-                  setModalMoverMesa({
-                    state: true,
-                    mesa: selectedMesa
-                  })
-                }}>
+                  setModalMoverMesa({ state: true, mesa: selectedMesa });
+                }}
+              >
                 <FaUserClock /> {loadingOptions.mover ? <Spinner size="sm" color="light" /> : 'Mover Mesa'}
               </Button>
             </>
-          )}
-
-
-
+          ) : null}
+          <Button color="secondary" onClick={() => setReservasDaMesaModal({
+            state: true,
+            mesa: selectedMesa
+          })}>Reservas</Button>
           <Button color="secondary" onClick={() => setDetailsModal(false)}>Fechar</Button>
         </ModalFooter>
       </Modal>
@@ -689,23 +762,17 @@ function App() {
           <Button
             style={{ backgroundColor: '#28a745' }}
             onClick={() => {
-              // Converte a data e a hora para o formato ISO
-              const dataReservaISO = reservarModal.mesa.dataReserva ? new Date(reservarModal.mesa.dataReserva).toISOString().split('T')[0] : '';
-              const horarioReservaISO = reservarModal.mesa.horarioReserva ? `${reservarModal.mesa.dataReserva}T${reservarModal.mesa.horarioReserva}:00.000Z` : '';
-
-              // Atualiza o objeto reservarModal.mesa com os valores convertidos
-              const mesaAtualizada = {
-                ...reservarModal.mesa,
-                dataReserva: dataReservaISO,
-                horarioReserva: horarioReservaISO
-              };
-
               setLoadingOptions({
                 ...loadingOptions,
                 reserva: true
               });
 
-              axios.put(`${API_URL}/api/reservarMesa/${selectedMesa.id}`, mesaAtualizada)
+              axios.put(`${API_URL}/api/reservarMesa/${selectedMesa.id}`, {
+                nomeCliente: reservarModal.mesa.nomeCliente,
+                telefoneCliente: reservarModal.mesa.telefoneCliente,
+                dataReserva: reservarModal.mesa.dataReserva, // Apenas a data no formato YYYY-MM-DD
+                horarioReserva: reservarModal.mesa.horarioReserva // Apenas o horário no formato HH:mm
+              })
                 .then(response => {
                   setConfirmModal({
                     state: true,
@@ -722,7 +789,7 @@ function App() {
                 .catch(error => {
                   setConfirmModal({
                     state: true,
-                    message: error.response.data.error,
+                    message: error.response?.data?.error || 'Erro ao reservar a mesa',
                     type: 'error'
                   });
                   setReservarModal({
@@ -748,15 +815,16 @@ function App() {
             })}
           >Cancelar</Button>
         </ModalFooter>
-      </Modal>
+      </Modal >
 
       {/* MODAL PARA EDITAR MESA */}
-      <Modal
+      < Modal
         isOpen={editarModal.state}
         toggle={() => setEditarModal({
           state: false,
           mesa: null
-        })}
+        })
+        }
         centered
       >
         <ModalHeader toggle={() => setEditarModal({
@@ -863,10 +931,10 @@ function App() {
             })}
           >Cancelar</Button>
         </ModalFooter>
-      </Modal>
+      </Modal >
 
       {/* MODAL PARA MOVER MESA */}
-      <Modal
+      < Modal
         isOpen={modalMoverMesa.state}
         toggle={() => setModalMoverMesa({
           state: false,
@@ -910,7 +978,10 @@ function App() {
                 mover: true
               });
 
-              axios.put(`${API_URL}/api/moverMesa/${selectedMesa.id}`, { numeroMesaDestino: modalMoverMesa.mesa.numeroMesaDestino })
+              axios.put(`${API_URL}/api/moverMesa`, {
+                id: modalMoverMesa.mesa.id,
+                numeroMesaDestino: modalMoverMesa.mesa.numeroMesaDestino
+              })
                 .then(response => {
                   setConfirmModal({
                     state: true,
@@ -953,6 +1024,77 @@ function App() {
             })}
           >
             Cancelar
+          </Button>
+        </ModalFooter>
+      </Modal >
+
+      {/* MODAL PARA VER RESERVAS DA MESA */}
+      <Modal
+        isOpen={reservasDaMesaModal.state}
+        toggle={() => setReservasDaMesaModal({
+          state: false,
+          mesa: null
+        })}
+        centered
+        style={{ maxWidth: '80%' }} // Ajuste o tamanho máximo do modal
+      >
+        <ModalHeader toggle={() => setReservasDaMesaModal({
+          state: false,
+          mesa: null
+        })}>
+          Reservas da Mesa {reservasDaMesaModal.mesa?.numero}
+        </ModalHeader>
+        <ModalBody>
+          <div className="calendar-container">
+            {/* Gera os próximos 7 dias */}
+            {Array.from({ length: 7 }).map((_, index) => {
+              const currentDate = new Date();
+              currentDate.setDate(currentDate.getDate() + index); // Adiciona os dias ao dia atual
+              const dataFormatada = currentDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+
+              // Filtra as reservas para o dia atual
+              const reservasDoDia = reservasDaMesaModal.mesa?.reservas?.filter(reserva => {
+                const dataReserva = new Date(reserva.dataReserva);
+                return (
+                  dataReserva.getFullYear() === currentDate.getFullYear() &&
+                  dataReserva.getMonth() === currentDate.getMonth() &&
+                  dataReserva.getDate() === currentDate.getDate()
+                );
+              });
+
+              return (
+                <div key={index} className="calendar-day">
+                  <div className="day-header">{dataFormatada}</div>
+                  <div className="day-reservas">
+                    {reservasDoDia?.length > 0 ? (
+                      reservasDoDia.map((reserva, i) => {
+                        const horarioReserva = new Date(reserva.horarioReserva);
+                        const horaFormatada = `${horarioReserva.getUTCHours().toString().padStart(2, '0')}:${horarioReserva.getUTCMinutes().toString().padStart(2, '0')}`;
+                        return (
+                          <div key={i} className="reserva-item">
+                            <p><strong>Nome:</strong> {reserva.nomeCliente}</p>
+                            <p><strong>Telefone:</strong> {formatarTelefone(reserva.telefoneCliente)}</p>
+                            <p><strong>Horário:</strong> {horaFormatada}</p>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="no-reservas">Sem reservas</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            onClick={() => setReservasDaMesaModal({
+              state: false,
+              mesa: null
+            })}
+          >
+            Fechar
           </Button>
         </ModalFooter>
       </Modal>

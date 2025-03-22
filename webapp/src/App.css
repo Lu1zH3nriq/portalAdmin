@@ -146,6 +146,7 @@ body {
   flex-direction: column; /* Alinhar os itens verticalmente */
   align-items: center;
   justify-content: center;
+  line-height: 1.2; /* Reduz o espaçamento entre as linhas */
 }
 
 .mesa-ocupada {
@@ -164,4 +165,56 @@ body {
 .reserva-info {
   margin-top: 10px;
   font-size: 0.8rem; /* Diminuir o tamanho da fonte para as informações de reserva */
+}
+
+
+/* Estilização do container do calendário */
+.calendar-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 10px 0;
+}
+
+/* Estilização de cada dia no calendário */
+.calendar-day {
+  flex: 1;
+  min-width: 120px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Cabeçalho do dia */
+.day-header {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+/* Reservas do dia */
+.day-reservas {
+  font-size: 12px;
+  color: #555;
+}
+
+/* Estilização de cada reserva */
+.reserva-item {
+  margin-bottom: 8px;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+/* Texto para dias sem reservas */
+.no-reservas {
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
 }
