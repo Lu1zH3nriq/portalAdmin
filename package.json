@@ -5,8 +5,8 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "nodemon server/server.js",
-    "client": "npm start --prefix client",
-    "build": "npm run build --prefix client",
+    "client": "npm start --prefix webapp",
+    "build": "npm run build --prefix webapp",
     "dev:full": "concurrently \"npm run dev\" \"npm run client\""
   },
   "keywords": [],
