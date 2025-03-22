@@ -105,7 +105,6 @@ app.put("/api/editarMesa/:id", async (req, res) => {
 // Rota para excluir uma mesa pelo número
 app.delete("/api/deleteMesa/:numero", async (req, res) => {
   const { numero } = req.params;
-  console.log(`Tentando excluir a mesa com número: ${numero}`);
   try {
     // Buscar a mesa pelo número
     const querySpec = {
@@ -204,6 +203,7 @@ app.put("/api/ocuparMesa/:id", async (req, res) => {
 
     // Atualizar o status da mesa para "Ocupada"
     mesa.status = "Ocupada";
+    mesa.reserva = false; // Cancelar reserva se houver
 
     // Salvar as alterações no CosmosDB
     const { resource } = await container.item(id, id).replace(mesa);
@@ -216,7 +216,7 @@ app.put("/api/ocuparMesa/:id", async (req, res) => {
 
 
 // Rota para liberar a mesa
-app.put("/api/ocuparMesa/:id", async (req, res) => {
+app.put("/api/liberarMesa/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -229,6 +229,11 @@ app.put("/api/ocuparMesa/:id", async (req, res) => {
 
     
     mesa.status = "Disponivel";
+    mesa.reserva = false; // Cancelar reserva se houver
+    mesa.dataReserva = "";
+    mesa.horarioReserva = "";
+    mesa.nomeCliente = "";
+    mesa.telefoneCliente = "";
 
     // Salvar as alterações no CosmosDB
     const { resource } = await container.item(id, id).replace(mesa);
@@ -236,6 +241,65 @@ app.put("/api/ocuparMesa/:id", async (req, res) => {
   } catch (error) {
     console.error("Erro ao liberar mesa:", error);
     res.status(500).json({ error: "Erro ao liberar mesa!" });
+  }
+});
+
+//Rota para mover a mesa para outra mesa
+app.put("/api/moverMesa/:id", async (req, res) => {
+  const { id } = req.params; // ID da mesa de origem
+  const { numeroMesaDestino } = req.body; // Número da mesa de destino
+
+  try {
+    // Buscar a mesa de origem pelo ID
+    const { resource: mesaOrigem } = await container.item(id, id).read();
+
+    if (!mesaOrigem) {
+      return res.status(404).json({ error: "Mesa de origem não encontrada" });
+    }
+
+    // Buscar a mesa de destino pelo número
+    const querySpec = {
+      query: "SELECT * FROM c WHERE c.numero = @numero",
+      parameters: [
+        {
+          name: "@numero",
+          value: numeroMesaDestino
+        }
+      ]
+    };
+
+    const { resources: mesasDestino } = await container.items.query(querySpec).fetchAll();
+
+    if (mesasDestino.length === 0) {
+      return res.status(404).json({ error: "Mesa de destino não encontrada" });
+    }
+
+    const mesaDestino = mesasDestino[0];
+
+    // Transferir os dados da mesa de origem para a mesa de destino
+    mesaDestino.dataReserva = mesaOrigem.dataReserva;
+    mesaDestino.horarioReserva = mesaOrigem.horarioReserva;
+    mesaDestino.nomeCliente = mesaOrigem.nomeCliente;
+    mesaDestino.telefoneCliente = mesaOrigem.telefoneCliente;
+    mesaDestino.reserva = mesaOrigem.reserva;
+    mesaDestino.status = "Ocupada"; // Atualizar o status da mesa de destino para "Ocupada"
+
+    // Liberar a mesa de origem
+    mesaOrigem.dataReserva = "";
+    mesaOrigem.horarioReserva = "";
+    mesaOrigem.nomeCliente = "";
+    mesaOrigem.telefoneCliente = "";
+    mesaOrigem.reserva = false;
+    mesaOrigem.status = "Disponivel";
+
+    // Salvar as alterações no CosmosDB
+    await container.item(mesaOrigem.id, mesaOrigem.id).replace(mesaOrigem);
+    const { resource: mesaAtualizada } = await container.item(mesaDestino.id, mesaDestino.id).replace(mesaDestino);
+
+    res.status(200).json({ message: "Mesa movida com sucesso!", data: mesaAtualizada });
+  } catch (error) {
+    console.error("Erro ao mover mesa:", error);
+    res.status(500).json({ error: "Erro ao mover a mesa!" });
   }
 });
 

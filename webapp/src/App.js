@@ -35,13 +35,19 @@ function App() {
     reserva: false,
     ocupar: false,
     confirmar: false,
-    cancelar: false
+    cancelar: false,
+    mover: false
   });
   const [editarModal, setEditarModal] = useState({
     state: false,
     mesa: null
   });
   const [reservarModal, setReservarModal] = useState({
+    state: false,
+    mesa: null
+  });
+
+  const [modalMoverMesa, setModalMoverMesa] = useState({
     state: false,
     mesa: null
   });
@@ -400,7 +406,7 @@ function App() {
           )}
         </ModalBody>
         <ModalFooter>
-          {!selectedMesa?.reserva && (
+          {!selectedMesa?.reserva && selectedMesa?.status !== "Ocupada" ? (
             <>
               <Button
                 style={{
@@ -425,9 +431,9 @@ function App() {
                 }}>
                 <FaEdit /> Editar
               </Button>
-
             </>
-          )}
+          ) : (null)
+          }
 
           {!selectedMesa?.reserva ? (
             <Button color="danger"
@@ -463,44 +469,45 @@ function App() {
 
               }}>
               <FaTrash /> {loadingOptions.delete ? <Spinner size="sm" color="light" /> : 'Excluir'}
-            </Button>) : (
+            </Button>) :
+            (
 
-            <Button
-              color="danger"
-              onClick={() => {
-                setLoadingOptions({
-                  ...loadingOptions,
-                  cancelar: true
-                });
-
-                axios.put(`${API_URL}/api/cancelarReserva/${selectedMesa.id}`)
-                  .then(response => {
-                    setConfirmModal({
-                      state: true,
-                      message: response.data.message,
-                      type: 'success'
-                    });
-                    fetchItems();
-                    setDetailsModal(false);
-                  })
-                  .catch(error => {
-                    setConfirmModal({
-                      state: true,
-                      message: error.response.data.error,
-                      type: 'error'
-                    });
-                    setDetailsModal(false);
-                  })
-                  .finally(() => {
-                    setLoadingOptions({
-                      ...loadingOptions,
-                      cancelar: false
-                    });
+              <Button
+                color="danger"
+                onClick={() => {
+                  setLoadingOptions({
+                    ...loadingOptions,
+                    cancelar: true
                   });
-              }}>
-              <FaUserClock /> {loadingOptions.cancelar ? <Spinner size="sm" color="light" /> : 'Cancelar Reserva'}
-            </Button>
-          )}
+
+                  axios.put(`${API_URL}/api/cancelarReserva/${selectedMesa.id}`)
+                    .then(response => {
+                      setConfirmModal({
+                        state: true,
+                        message: response.data.message,
+                        type: 'success'
+                      });
+                      fetchItems();
+                      setDetailsModal(false);
+                    })
+                    .catch(error => {
+                      setConfirmModal({
+                        state: true,
+                        message: error.response.data.error,
+                        type: 'error'
+                      });
+                      setDetailsModal(false);
+                    })
+                    .finally(() => {
+                      setLoadingOptions({
+                        ...loadingOptions,
+                        cancelar: false
+                      });
+                    });
+                }}>
+                <FaUserClock /> {loadingOptions.cancelar ? <Spinner size="sm" color="light" /> : 'Cancelar Reserva'}
+              </Button>
+            )}
 
           {selectedMesa?.status === "Disponivel" ? (
             <Button style={{
@@ -542,42 +549,54 @@ function App() {
               )}
             </Button>
           ) : (
-            <Button style={{
-              backgroundColor: "#28a745"
-            }}
-              onClick={() => {
-                setLoadingOptions({
-                  ...loadingOptions,
-                  confirmar: true
-                });
-
-                axios.put(`${API_URL}/api/liberarMesa/${selectedMesa.id}`)
-                  .then(response => {
-                    setConfirmModal({
-                      state: true,
-                      message: response.data.message,
-                      type: 'success'
-                    });
-                    fetchItems();
-                    setDetailsModal(false);
-                  })
-                  .catch(error => {
-                    setConfirmModal({
-                      state: true,
-                      message: error.response.data.error,
-                      type: 'error'
-                    });
-                    setDetailsModal(false);
-                  })
-                  .finally(() => {
-                    setLoadingOptions({
-                      ...loadingOptions,
-                      confirmar: false
-                    });
+            <>
+              <Button style={{
+                backgroundColor: "#28a745"
+              }}
+                onClick={() => {
+                  setLoadingOptions({
+                    ...loadingOptions,
+                    confirmar: true
                   });
-              }}>
-              <FaEdit /> {loadingOptions.confirmar ? <Spinner size="sm" color="light" /> : 'Liberar Mesa'}
-            </Button>
+
+                  axios.put(`${API_URL}/api/liberarMesa/${selectedMesa.id}`)
+                    .then(response => {
+                      setConfirmModal({
+                        state: true,
+                        message: response.data.message,
+                        type: 'success'
+                      });
+                      fetchItems();
+                      setDetailsModal(false);
+                    })
+                    .catch(error => {
+                      setConfirmModal({
+                        state: true,
+                        message: error.response.data.error,
+                        type: 'error'
+                      });
+                      setDetailsModal(false);
+                    })
+                    .finally(() => {
+                      setLoadingOptions({
+                        ...loadingOptions,
+                        confirmar: false
+                      });
+                    });
+                }}>
+                <FaEdit /> {loadingOptions.confirmar ? <Spinner size="sm" color="light" /> : 'Liberar Mesa'}
+              </Button>
+
+              <Button color="danger"
+                onClick={() => {
+                  setModalMoverMesa({
+                    state: true,
+                    mesa: selectedMesa
+                  })
+                }}>
+                <FaUserClock /> {loadingOptions.mover ? <Spinner size="sm" color="light" /> : 'Mover Mesa'}
+              </Button>
+            </>
           )}
 
 
@@ -843,6 +862,98 @@ function App() {
               mesa: null
             })}
           >Cancelar</Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* MODAL PARA MOVER MESA */}
+      <Modal
+        isOpen={modalMoverMesa.state}
+        toggle={() => setModalMoverMesa({
+          state: false,
+          mesa: null
+        })}
+        centered
+      >
+        <ModalHeader toggle={() => setModalMoverMesa({
+          state: false,
+          mesa: null
+        })}>
+          Mover Mesa
+        </ModalHeader>
+        <ModalBody>
+          <Form>
+            <FormGroup>
+              <Label for="numeroMesaDestino">Número da Mesa de Destino</Label>
+              <Input
+                type="number"
+                name="numeroMesaDestino"
+                id="numeroMesaDestino"
+                value={modalMoverMesa?.mesa?.numeroMesaDestino || ''}
+                onChange={(e) => setModalMoverMesa({
+                  ...modalMoverMesa,
+                  mesa: {
+                    ...modalMoverMesa.mesa,
+                    numeroMesaDestino: e.target.value
+                  }
+                })}
+                placeholder="Digite o número da mesa de destino"
+              />
+            </FormGroup>
+          </Form>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            style={{ backgroundColor: '#28a745' }}
+            onClick={() => {
+              setLoadingOptions({
+                ...loadingOptions,
+                mover: true
+              });
+
+              axios.put(`${API_URL}/api/moverMesa/${selectedMesa.id}`, { numeroMesaDestino: modalMoverMesa.mesa.numeroMesaDestino })
+                .then(response => {
+                  setConfirmModal({
+                    state: true,
+                    message: response.data.message,
+                    type: 'success'
+                  });
+                  fetchItems();
+                  setModalMoverMesa({
+                    state: false,
+                    mesa: null
+                  });
+                  setDetailsModal(false);
+                })
+                .catch(error => {
+                  setConfirmModal({
+                    state: true,
+                    message: error.response?.data?.error || 'Erro ao mover a mesa',
+                    type: 'error'
+                  });
+                  setModalMoverMesa({
+                    state: false,
+                    mesa: null
+                  });
+                  setDetailsModal(false);
+                })
+                .finally(() => {
+                  setLoadingOptions({
+                    ...loadingOptions,
+                    mover: false
+                  });
+                });
+            }}
+          >
+            {loadingOptions.mover ? <Spinner size="sm" color="light" /> : 'Mover'}
+          </Button>
+          <Button
+            onClick={() => setModalMoverMesa({
+              state: false,
+              mesa: null
+            })}
+          >
+            Cancelar
+          </Button>
         </ModalFooter>
       </Modal>
     </>
