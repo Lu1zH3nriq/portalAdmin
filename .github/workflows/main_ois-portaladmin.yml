@@ -74,7 +74,3 @@ jobs:
           app-name: 'ois-portalAdmin'
           slot-name: 'Production'
           package: .
-
-      - name: Set startup command
-        run: |
-          az webapp config set --name ois-portalAdmin --resource-group Testes-Luiz --startup-file "cd site/wwwroot/server && pm2 start server.js"
