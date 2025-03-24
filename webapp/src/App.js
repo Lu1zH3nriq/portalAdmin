@@ -36,7 +36,8 @@ function App() {
     ocupar: false,
     confirmar: false,
     cancelar: false,
-    mover: false
+    mover: false,
+    atualizar: false
   });
   const [editarModal, setEditarModal] = useState({
     state: false,
@@ -57,14 +58,24 @@ function App() {
     mesa: null
   });
 
-  const API_URL = "https://ois-portaladmin.azurewebsites.net";
+  // const API_URL = "https://ois-portaladmin.azurewebsites.net";
+  const API_URL = "http://localhost:3001";
 
   async function fetchItems() {
+    setLoadingOptions({
+      ...loadingOptions,
+      atualizar: true
+    });
     try {
       const response = await axios.get(`${API_URL}/api/items`);
       setItems(response.data);
     } catch (error) {
       console.error("Erro ao buscar itens:", error);
+    } finally {
+      setLoadingOptions({
+        ...loadingOptions,
+        atualizar: false
+      });
     }
   }
   useEffect(() => {
@@ -152,52 +163,94 @@ function App() {
     setDetailsModal(true);
   };
 
-  const renderMesas = (praca) => {
-    // Obtém a data atual no formato ISO (apenas a parte da data)
-    const dataAtual = new Date().toISOString().split('T')[0];
+const renderMesas = (praca) => {
+  if (loading) {
+    // Exibe skeleton enquanto os dados estão sendo carregados
+    return Array.from({ length: 4 }).map((_, index) => (
+      <div key={index} className="mesa-skeleton">
+        <div className="skeleton skeleton-title"></div>
+        <div className="skeleton skeleton-text"></div>
+        <div className="skeleton skeleton-text"></div>
+      </div>
+    ));
+  }
 
-    return items
-      .filter(item => item.praca === praca)
-      .map(item => {
-        // Filtra as reservas que correspondem à data atual
-        const reservasHoje = item.reservas?.filter(reserva => reserva.dataReserva === dataAtual) || [];
+  // Obtém a data atual no formato ISO (apenas a parte da data)
+  const dataAtual = new Date().toISOString().split('T')[0];
 
-        return (
-          <div
-            key={item.id}
-            className={`mesa${reservasHoje.length > 0 ? '-reservada' : item.status === 'Ocupada' ? '-ocupada' : ''}`}
-            onClick={() => handleMesaClick(item)}
-            style={{ cursor: 'pointer' }}
-            title="Clique para ver detalhes"
-          >
-            <p>Mesa: {item.numero}</p>
-            <p>{item.lugares} lugares</p>
-            {reservasHoje.length > 0 ? (
-              reservasHoje.map((reserva, index) => (
-                <div key={index}>
-                  <p>Reservada às {new Date(reserva.horarioReserva).toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'UTC'
-                  })}</p>
-                </div>
-              ))
+  return items
+    .filter(item => item.praca === praca)
+    .map(item => {
+      // Filtra as reservas que correspondem à data atual
+      const reservasHoje = item.reservas?.filter(reserva => reserva.dataReserva === dataAtual) || [];
+
+      return (
+        <div
+          key={item.id}
+          className={`mesa${reservasHoje.length > 0 ? '-reservada' : item.status === 'Ocupada' ? '-ocupada' : ''}`}
+          onClick={() => handleMesaClick(item)}
+          style={{ cursor: 'pointer' }}
+          title="Clique para ver detalhes"
+        >
+          <p>Mesa: {item.numero}</p>
+          <p>{item.lugares} lugares</p>
+          {reservasHoje.length > 0 ? (
+            reservasHoje.map((reserva, index) => (
+              <div key={index}>
+                <p>Reservada às {new Date(reserva.horarioReserva).toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  timeZone: 'UTC'
+                })}</p>
+              </div>
+            ))
+          ) : (
+            item.status === 'Ocupada' ? (
+              <p>Ocupada</p>
             ) : (
-              item.status === 'Ocupada' ? (
-                <p>Ocupada</p>
-              ) : (
-                <p>Disponível</p>
-              )
-            )}
-          </div>
-        );
-      });
-  };
+              <p>Disponível</p>
+            )
+          )}
+        </div>
+      );
+    });
+};
 
   const formatarTelefone = (telefone) => {
     if (!telefone) return '';
     const match = telefone.match(/^(\d{2})(\d{5})(\d{4})$/);
     return match ? `(${match[1]}) ${match[2]}-${match[3]}` : telefone;
+  };
+
+  const handleDeleteReserva = (reservaToDelete) => {
+    const mesaAtualizada = {
+      ...reservasDaMesaModal.mesa,
+      reservas: reservasDaMesaModal.mesa.reservas.filter(reserva => reserva !== reservaToDelete)
+    };
+
+    // Atualiza o estado local
+    setReservasDaMesaModal({
+      ...reservasDaMesaModal,
+      mesa: mesaAtualizada
+    });
+
+    // Atualiza no backend
+    axios.put(`${API_URL}/api/editarMesa/${mesaAtualizada.id}`, mesaAtualizada)
+      .then(response => {
+        setConfirmModal({
+          state: true,
+          message: 'Reserva cancelada com sucesso!',
+          type: 'success'
+        });
+        fetchItems(); // Atualiza a lista de mesas
+      })
+      .catch(error => {
+        setConfirmModal({
+          state: true,
+          message: error.response?.data?.error || 'Erro ao cancelar a reserva',
+          type: 'error'
+        });
+      });
   };
 
   return (
@@ -227,7 +280,7 @@ function App() {
           <Col
             className={`text-center custom-col ${selectedButton === 'Cadastrar Mesa' ? 'selected' : ''}`}
             onClick={() => {
-              handleButtonClick('Cadastrar Mesa')
+              handleButtonClick('Cadastrar Mesa');
               setFormData({
                 numero: '',
                 lugares: '',
@@ -244,13 +297,25 @@ function App() {
             Cadastrar Mesa
           </Col>
           {/* <Col
-            className={`text-center custom-col ${selectedButton === 'Editar/Excluir Mesa' ? 'selected' : ''}`}
-            onClick={() => handleButtonClick('Editar/Excluir Mesa')}
-          >
-            Editar/Excluir Mesa
-          </Col> */}
+      className={`text-center custom-col ${selectedButton === 'Editar/Excluir Mesa' ? 'selected' : ''}`}
+      onClick={() => handleButtonClick('Editar/Excluir Mesa')}
+    >
+      Editar/Excluir Mesa
+    </Col> */}
+        </Row>
+        <Row className="justify-content-center mt-4">
+          <Col xs="auto">
+            <Button
+              color="primary"
+              onClick={fetchItems} // Chama o método fetchItems ao clicar
+              style={{ backgroundColor: '#F205B3', border: 'none' }}
+            >
+              {loadingOptions.atualizar ? <Spinner size="sm" color="light" /> : 'Atualizar'}
+            </Button>
+          </Col>
         </Row>
       </Container>
+
 
       {selectedButton === 'Cadastrar Mesa' && (
         <Container fluid className="form-container" style={{ maxWidth: '40%' }}>
@@ -1052,14 +1117,12 @@ function App() {
               currentDate.setDate(currentDate.getDate() + index); // Adiciona os dias ao dia atual
               const dataFormatada = currentDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
 
+              // Obtém a data no formato YYYY-MM-DD para comparação
+              const currentDateISO = currentDate.toISOString().split('T')[0];
+
               // Filtra as reservas para o dia atual
               const reservasDoDia = reservasDaMesaModal.mesa?.reservas?.filter(reserva => {
-                const dataReserva = new Date(reserva.dataReserva);
-                return (
-                  dataReserva.getFullYear() === currentDate.getFullYear() &&
-                  dataReserva.getMonth() === currentDate.getMonth() &&
-                  dataReserva.getDate() === currentDate.getDate()
-                );
+                return reserva.dataReserva === currentDateISO;
               });
 
               return (
@@ -1070,11 +1133,20 @@ function App() {
                       reservasDoDia.map((reserva, i) => {
                         const horarioReserva = new Date(reserva.horarioReserva);
                         const horaFormatada = `${horarioReserva.getUTCHours().toString().padStart(2, '0')}:${horarioReserva.getUTCMinutes().toString().padStart(2, '0')}`;
+
                         return (
                           <div key={i} className="reserva-item">
                             <p><strong>Nome:</strong> {reserva.nomeCliente}</p>
                             <p><strong>Telefone:</strong> {formatarTelefone(reserva.telefoneCliente)}</p>
                             <p><strong>Horário:</strong> {horaFormatada}</p>
+                            <Button
+                              color="danger"
+                              size="sm"
+                              className="delete-reserva-btn"
+                              onClick={() => handleDeleteReserva(reserva)}
+                            >
+                              <FaTrash />
+                            </Button>
                           </div>
                         );
                       })
