@@ -58,8 +58,8 @@ function App() {
     mesa: null
   });
 
-  // const API_URL = "https://ois-portaladmin.azurewebsites.net";
-  const API_URL = "http://localhost:3001";
+  const API_URL = "https://ois-portaladmin.azurewebsites.net";
+  //const API_URL = "http://localhost:3001";
 
   async function fetchItems() {
     setLoadingOptions({
