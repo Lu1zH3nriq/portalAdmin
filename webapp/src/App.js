@@ -78,6 +78,15 @@ function App() {
       });
     }
   }
+
+  // Executa fetchItems a cada 5 minutos (300000 ms)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchItems();
+    }, 300000); // 5 minutos
+
+    return () => clearInterval(interval);
+  }, []);
   useEffect(() => {
     fetchItems();
   }, [selectedButton === 'Mesas']);
@@ -202,6 +211,7 @@ const renderMesas = (praca) => {
                   minute: '2-digit',
                   timeZone: 'UTC'
                 })}</p>
+                <p>{reserva.nomeCliente}</p>
               </div>
             ))
           ) : (
